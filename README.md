@@ -2,7 +2,7 @@
 
 Checks Swift code for things SwiftLint cannot see. SwiftLint's custom rules are regular expressions over one file at a time. This tool parses the whole code base with [swift-syntax](https://github.com/swiftlang/swift-syntax), Apple's Swift parser, so a rule can use facts from other files, such as the default value a parameter was declared with.
 
-It is independent of SwiftLint and needs no Xcode project. Output uses Xcode's `file:line:column: warning:` format, so findings show up in Xcode's issue navigator when the tool runs as a build phase.
+It is independent of SwiftLint. It runs as a command line tool or as an Xcode build tool plugin. Output uses Xcode's `file:line:column: warning:` format, so findings show up in Xcode's issue navigator.
 
 ## Rules
 
@@ -37,7 +37,7 @@ mint install num42/n42-swift-checker
 Or add it to your `Mintfile`:
 
 ```
-num42/n42-swift-checker@0.1.0
+num42/n42-swift-checker@0.2.0
 ```
 
 ### Build from source
@@ -76,6 +76,7 @@ Folders are searched for `.swift` files. Hidden folders, `build`, `DerivedData`,
 
 - `-e, --exclude <path>` — path to skip. Repeat the flag for several paths.
 - `--rule <id>` — only run this rule. Repeat the flag for several rules.
+- `--declarations-from <path>` — folder whose declarations are read but whose files are not checked. Repeat the flag for several folders.
 - `--strict` — print findings as errors and exit with status 1 when there are any.
 - `--json` — print findings as JSON.
 - `--list-rules` — list the available rules.
@@ -95,20 +96,63 @@ Checked 771 file(s), found 2 issue(s).
 
 The summary line goes to stderr, the findings to stdout.
 
-## Xcode build phase
+## Xcode build tool plugin
 
-With XcodeGen, add a script phase to the target (or to a `LintedTarget` template):
+The package ships a SwiftPM build tool plugin, `N42SwiftCheckerBuildToolPlugin`. It runs the checker on a target whenever one of the target's Swift files changed, and Xcode shows every finding as a warning at the right line. The whole project folder is passed as context, so default values declared in other modules are known too.
+
+### XcodeGen
+
+Add the package and use the plugin in a target template, next to SwiftLint's plugin:
 
 ```yaml
-postCompileScripts:
-  - name: n42-swift-checker
-    script: |
-      export PATH="bin:$PATH"
-      bin/mint run --no-install n42-swift-checker Sources SyncedSources
-    basedOnDependencyAnalysis: false
+packages:
+  n42-swift-checker:
+    url: https://github.com/num42/n42-swift-checker
+    from: 0.2.0
+
+targetTemplates:
+  LintedTarget:
+    buildToolPlugins:
+      - package: SwiftLintPlugins
+        plugin: SwiftLintBuildToolPlugin
+      - package: n42-swift-checker
+        plugin: N42SwiftCheckerBuildToolPlugin
 ```
 
-Xcode shows every finding as a warning at the right line.
+### Xcode project
+
+Add the package under *Package Dependencies*, then in the target's *Build Phases* open *Run Build Tool Plug-ins* and add `N42SwiftCheckerBuildToolPlugin`. Xcode asks once to trust the plugin.
+
+### Swift package
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/num42/n42-swift-checker", from: "0.2.0"),
+],
+targets: [
+    .target(
+        name: "MyModule",
+        plugins: [.plugin(name: "N42SwiftCheckerBuildToolPlugin", package: "n42-swift-checker")]
+    ),
+]
+```
+
+### Notes
+
+- The plugin builds the checker from source the first time. swift-syntax takes a few minutes once; later builds reuse it. App repos that already use swift-syntax for macros share the checkout.
+- Only the target's files are checked, so one finding is never reported twice.
+- The command runs when one of the target's Swift files changed, like any build step with inputs and outputs. A clean build checks everything. Its output is a comment-only Swift file in the plugin's work folder, because SwiftPM would copy a file of any other type into the product as a resource.
+- `--strict` is not used by the plugin. To fail CI, run the command line tool with `--strict` in a CI step instead.
+
+## Checking one module with the context of the whole project
+
+The plugin uses `--declarations-from`. You can do the same on the command line:
+
+```bash
+n42-swift-checker iOS/Sources/AppModule --declarations-from iOS
+```
+
+Files under `--declarations-from` are parsed for declarations only. Findings are reported for the checked paths only.
 
 ## CI
 

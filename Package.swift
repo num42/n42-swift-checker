@@ -8,6 +8,7 @@ let package = Package(
     products: [
         .executable(name: "n42-swift-checker", targets: ["n42-swift-checker"]),
         .library(name: "SwiftChecker", targets: ["SwiftChecker"]),
+        .plugin(name: "N42SwiftCheckerBuildToolPlugin", targets: ["N42SwiftCheckerBuildToolPlugin"]),
     ],
     dependencies: [
         // Apache-2.0. Apple's Swift parser; the same version the app repos use for their macros.
@@ -29,6 +30,11 @@ let package = Package(
                 "SwiftChecker",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
+        ),
+        .plugin(
+            name: "N42SwiftCheckerBuildToolPlugin",
+            capability: .buildTool(),
+            dependencies: ["n42-swift-checker"]
         ),
         .testTarget(
             name: "SwiftCheckerTests",

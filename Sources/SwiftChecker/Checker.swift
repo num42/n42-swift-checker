@@ -8,9 +8,11 @@ public struct Checker {
         self.rules = rules.map { $0.init() }
     }
 
-    /// Checks already parsed files.
-    public mutating func run(_ files: [SourceFile]) -> [Finding] {
-        for file in files {
+    /// Checks already parsed files. `context` files only feed the collect pass:
+    /// rules learn from them, but findings are reported for `files` only.
+    public mutating func run(_ files: [SourceFile], context: [SourceFile] = []) -> [Finding] {
+        let checked = Set(files.map(\.path))
+        for file in files + context.filter({ !checked.contains($0.path) }) {
             for index in rules.indices {
                 rules[index].collect(file)
             }
@@ -23,11 +25,12 @@ public struct Checker {
         run(sources.sorted { $0.key < $1.key }.map { SourceFile(path: $0.key, contents: $0.value) })
     }
 
-    /// Reads and checks the files at `paths`.
-    public mutating func run(paths: [String]) throws -> [Finding] {
-        let files = try paths.map { path in
-            SourceFile(path: path, contents: try String(contentsOfFile: path, encoding: .utf8))
-        }
-        return run(files)
+    /// Reads and checks the files at `paths`. Files at `contextPaths` are read for declarations only.
+    public mutating func run(paths: [String], contextPaths: [String] = []) throws -> [Finding] {
+        run(try paths.map(Self.read), context: try contextPaths.map(Self.read))
+    }
+
+    private static func read(_ path: String) throws -> SourceFile {
+        SourceFile(path: path, contents: try String(contentsOfFile: path, encoding: .utf8))
     }
 }

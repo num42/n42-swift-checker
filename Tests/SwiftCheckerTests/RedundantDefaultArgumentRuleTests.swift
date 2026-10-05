@@ -189,3 +189,16 @@ import Testing
         #expect(result.map(\.line) == [2, 3])
     }
 }
+
+@Suite struct ContextFilesTests {
+    @Test func contextFilesFeedDeclarationsButGetNoFindings() {
+        var checker = Checker(rules: [RedundantDefaultArgumentRule.self])
+        let shared = SourceFile(path: "Shared.swift", contents: """
+            public struct Card { public init(title: String, subtitle: String? = nil) {} }
+            let own = Card(title: "a", subtitle: nil)
+            """)
+        let app = SourceFile(path: "App.swift", contents: "let card = Card(title: \"x\", subtitle: nil)")
+        let result = checker.run([app], context: [shared])
+        #expect(result.map(\.path) == ["App.swift"])
+    }
+}

@@ -23,6 +23,15 @@ struct N42SwiftChecker: ParsableCommand {
     @Option(name: .long, help: "Only run this rule. Repeat the flag for several rules. Default: all rules.")
     var rule: [String] = []
 
+    @Option(
+        name: .long,
+        help: ArgumentHelp(
+            "Folder whose declarations are read, but whose files are not checked. Repeat the flag for several folders.",
+            discussion: "Use this to check one module while knowing the default values declared in the rest of the project."
+        )
+    )
+    var declarationsFrom: [String] = []
+
     @Flag(name: .long, help: "Print findings as errors and exit with status 1 when there are any.")
     var strict = false
 
@@ -31,6 +40,12 @@ struct N42SwiftChecker: ParsableCommand {
 
     @Flag(name: .long, help: "List the available rules and exit.")
     var listRules = false
+
+    @Option(
+        name: .long,
+        help: "Write a comment-only Swift file to this path when the run is done. The build tool plugin declares it as the command's output."
+    )
+    var marker: String?
 
     mutating func run() throws {
         if listRules {
@@ -48,8 +63,9 @@ struct N42SwiftChecker: ParsableCommand {
         }
 
         let files = FileFinder.swiftFiles(under: paths, excluding: exclude)
+        let contextFiles = FileFinder.swiftFiles(under: declarationsFrom, excluding: exclude)
         var checker = Checker(rules: selected)
-        let findings = try checker.run(paths: files)
+        let findings = try checker.run(paths: files, contextPaths: contextFiles)
 
         if json {
             let encoder = JSONEncoder()
@@ -64,6 +80,13 @@ struct N42SwiftChecker: ParsableCommand {
 
         let summary = "Checked \(files.count) file(s), found \(findings.count) issue(s)."
         FileHandle.standardError.write(Data((summary + "\n").utf8))
+
+        if let marker {
+            let url = URL(fileURLWithPath: marker)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let note = "// Written by n42-swift-checker when it checked this target. The build tool plugin declares this file as its output.\n"
+            try Data(note.utf8).write(to: url)
+        }
 
         if strict, !findings.isEmpty {
             throw ExitCode(1)
