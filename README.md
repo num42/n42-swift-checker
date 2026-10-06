@@ -37,7 +37,7 @@ mint install num42/n42-swift-checker
 Or add it to your `Mintfile`:
 
 ```
-num42/n42-swift-checker@0.2.0
+num42/n42-swift-checker@0.2.1
 ```
 
 ### Build from source
@@ -108,7 +108,7 @@ Add the package and use the plugin in a target template, next to SwiftLint's plu
 packages:
   n42-swift-checker:
     url: https://github.com/num42/n42-swift-checker
-    from: 0.2.0
+    from: 0.2.1
 
 targetTemplates:
   LintedTarget:
@@ -127,7 +127,7 @@ Add the package under *Package Dependencies*, then in the target's *Build Phases
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/num42/n42-swift-checker", from: "0.2.0"),
+    .package(url: "https://github.com/num42/n42-swift-checker", from: "0.2.1"),
 ],
 targets: [
     .target(
