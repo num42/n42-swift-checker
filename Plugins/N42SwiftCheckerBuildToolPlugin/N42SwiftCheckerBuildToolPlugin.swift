@@ -40,7 +40,8 @@ extension N42SwiftCheckerBuildToolPlugin {
     /// when one of the target's Swift files changed. Xcode would otherwise warn on every build
     /// that the command has no outputs. The marker is a comment-only Swift file: SwiftPM adds
     /// a command's outputs to the target, and a file of any other type would become a resource.
-    func commands(tool: URL, targetName: String, files: [URL], root: URL, workDirectory: URL) -> [Command] {
+    func commands(tool: URL, targetName: String, files allFiles: [URL], root: URL, workDirectory: URL) -> [Command] {
+        let files = allFiles.filter { !isGenerated($0) }
         guard !files.isEmpty else { return [] }
         let marker = workDirectory.appending(path: "N42SwiftCheckerRan.swift")
         return [
@@ -52,5 +53,16 @@ extension N42SwiftCheckerBuildToolPlugin {
                 outputFiles: [marker]
             ),
         ]
+    }
+
+    /// Generated code is skipped. Script phases often write it during the build, and Xcode runs
+    /// plugin commands before script phases. Listing such a file as an input would make the plugin
+    /// wait for the script and the script wait for the plugin: a dependency cycle.
+    func isGenerated(_ url: URL) -> Bool {
+        let name = url.lastPathComponent
+        return url.pathComponents.contains { $0.caseInsensitiveCompare("Generated") == .orderedSame }
+            || name.hasPrefix("Generated")
+            || name.hasSuffix(".pb.swift")
+            || name.hasSuffix(".grpc.swift")
     }
 }

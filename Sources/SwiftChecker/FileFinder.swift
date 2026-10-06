@@ -4,7 +4,7 @@ import Foundation
 public enum FileFinder {
     /// Folder names that never hold app code. Hidden folders (`.build`, `.git`, `.claude`, ...) are skipped too.
     public static let defaultExcludedDirectories: Set<String> = [
-        "build", "Carthage", "DerivedData", "Pods", "vendor",
+        "build", "Carthage", "DerivedData", "Generated", "Pods", "vendor",
     ]
 
     /// File name endings of generated code that is not worth checking.

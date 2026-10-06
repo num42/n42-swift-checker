@@ -70,7 +70,7 @@ n42-swift-checker --json
 n42-swift-checker --list-rules
 ```
 
-Folders are searched for `.swift` files. Hidden folders, `build`, `DerivedData`, `Pods`, `Carthage`, `vendor` and generated protobuf files (`*.pb.swift`, `*.grpc.swift`) are skipped.
+Folders are searched for `.swift` files. Hidden folders, `build`, `DerivedData`, `Generated`, `Pods`, `Carthage`, `vendor` and generated protobuf files (`*.pb.swift`, `*.grpc.swift`) are skipped.
 
 ### Options
 
@@ -141,6 +141,7 @@ targets: [
 
 - The plugin builds the checker from source the first time. swift-syntax takes a few minutes once; later builds reuse it. App repos that already use swift-syntax for macros share the checkout.
 - Only the target's files are checked, so one finding is never reported twice.
+- Generated files are skipped: files in a `Generated` folder, files whose name starts with `Generated`, and `*.pb.swift` / `*.grpc.swift`. Script phases often write such files during the build. Xcode runs plugin commands before script phases, so listing them as inputs would cause a dependency cycle.
 - The command runs when one of the target's Swift files changed, like any build step with inputs and outputs. A clean build checks everything. Its output is a comment-only Swift file in the plugin's work folder, because SwiftPM would copy a file of any other type into the product as a resource.
 - `--strict` is not used by the plugin. To fail CI, run the command line tool with `--strict` in a CI step instead.
 
